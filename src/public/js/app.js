@@ -14,6 +14,7 @@ let muted = true;
 let cameraOff = false;
 let roomName;
 let myPeerConnection;
+let myDataChannel;
 
 async function getCameras() {
   try {
@@ -133,6 +134,10 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 socket.on("welcome", async () => {
   // peer A
+  myDataChannel = myPeerConnection.createDataChannel("chat");
+  myDataChannel.addEventListener("message", console.log);
+  console.log("made data channel");
+
   const offer = await myPeerConnection.createOffer();
   myPeerConnection.setLocalDescription(offer);
   console.log("send offer");
@@ -140,8 +145,12 @@ socket.on("welcome", async () => {
 });
 
 socket.on("offer", async (offer) => {
-  console.log("receved the offer");
   // peer B
+  myPeerConnection.addEventListener("datachannel", (event) => {
+    myDataChannel = event.channel;
+    myDataChannel.addEventListener("message", console.log);
+  });
+  console.log("receved the offer");
   myPeerConnection.setRemoteDescription(offer);
   const answer = await myPeerConnection.createAnswer();
   myPeerConnection.setLocalDescription(answer);
@@ -162,7 +171,20 @@ socket.on("ice", (ice) => {
 // RTC Code
 
 function makeConnection() {
-  myPeerConnection = new RTCPeerConnection();
+  myPeerConnection = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: [
+          "stun:stun.l.google.com:19302",
+          "stun:stun1.l.google.com:19302",
+          "stun:stun2.l.google.com:19302",
+          "stun:stun3.l.google.com:19302",
+          "stun:stun4.l.google.com:19302",
+        ],
+      },
+    ],
+  });
+
   myPeerConnection.addEventListener("icecandidate", handleIce);
   myPeerConnection.addEventListener("addstream", handleAddStream);
   myStream
